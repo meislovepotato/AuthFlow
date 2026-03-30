@@ -11,7 +11,8 @@ export const register = async (req, res) => {
       data: user,
     });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    console.log("REGISTER ERROR:", err.message);
+    res.status(400).json({ message: err.message });
   }
 };
 
@@ -24,6 +25,8 @@ export const login = async (req, res) => {
       ...result,
     });
   } catch (err) {
+    console.log("LOGIN BODY:", req.body);
+    console.log("USER FROM DB:", user);
     res.status(401).json({ error: err.message });
   }
 };
