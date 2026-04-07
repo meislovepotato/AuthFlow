@@ -4,6 +4,7 @@ import * as authService from "./auth.service.js";
 import db from "../../database/index.js";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
+import auditLog from "../audit/log.js";
 
 export const register = async (req, res) => {
   try {
@@ -15,12 +16,28 @@ export const register = async (req, res) => {
 
     const user = await authService.registerUser(req.body);
 
+    try {
+      await auditLog("REGISTER_SUCCESS", {
+        userId: user.id,
+        ipAddress: req.ip,
+      });
+    } catch (e) {}
+
     res.status(201).json({
       message: "User registered",
       data: user,
     });
   } catch (err) {
     console.log("REGISTER ERROR:", err.message);
+    try {
+      const found = await db.User.findOne({
+        where: { email: req.body?.email },
+      });
+      await auditLog("REGISTER_FAILURE", {
+        userId: found ? found.id : null,
+        ipAddress: req.ip,
+      });
+    } catch (e) {}
     res.status(400).json({ message: err.message });
   }
 };
@@ -63,6 +80,15 @@ export const login = async (req, res) => {
   } catch (err) {
     console.log("LOGIN BODY:", req.body);
     console.log("LOGIN ERROR:", err && err.message);
+    try {
+      const found = await db.User.findOne({ where: { email: req.body.email } });
+      await auditLog("LOGIN_FAILURE", {
+        userId: found ? found.id : null,
+        ipAddress: req.ip,
+      });
+    } catch (e) {
+      console.error("AuditLog error (login failure):", e && e.message);
+    }
     res.status(401).json({ error: err.message });
   }
 };
@@ -98,6 +124,8 @@ export const authorize = async (req, res) => {
     });
     const { client_id, redirect_uri } = schema.parse(req.query);
 
+    await auditLog("APP_AUTH_REQUEST", { userId: null, ipAddress: req.ip });
+
     const application = await db.Application.findOne({
       where: { clientId: client_id },
     });
@@ -118,6 +146,13 @@ export const authorize = async (req, res) => {
           userId: decoded.userId,
           roleId: decoded.roleId,
         });
+
+        try {
+          await auditLog("APP_AUTH_GRANTED", {
+            userId: decoded.userId,
+            ipAddress: req.ip,
+          });
+        } catch (e) {}
 
         return res.redirect(`${redirect_uri}?token=${clientToken}`);
       } catch (err) {
@@ -149,7 +184,15 @@ export const logout = async (req, res) => {
     if (!refreshToken && !accessToken)
       return res.status(400).json({ error: "Missing token" });
 
-    const ok = await authService.revokeSession({ refreshToken, accessToken });
+    const ipAddress = req.ip || req.connection?.remoteAddress;
+    const userAgent = req.headers["user-agent"] || null;
+
+    const ok = await authService.revokeSession({
+      refreshToken,
+      accessToken,
+      ipAddress,
+      userAgent,
+    });
     if (!ok) return res.status(404).json({ error: "Session not found" });
 
     return res.json({ message: "Logged out" });
@@ -169,6 +212,13 @@ export const clientToken = async (req, res) => {
       { clientId: app.clientId, appId: app.id },
       "1h",
     );
+
+    try {
+      await auditLog("CLIENT_TOKEN_ISSUED", {
+        userId: null,
+        ipAddress: req.ip,
+      });
+    } catch (err) {}
 
     return res.json({ accessToken: token });
   } catch (err) {

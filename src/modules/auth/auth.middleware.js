@@ -1,11 +1,12 @@
 // src/modules/auth/auth.middleware.js
 
 import jwt from "jsonwebtoken";
+import auditLog from "../audit/log.js";
 
-export const authenticate = (req, res, next) => {
+export const authenticate = async (req, res, next) => {
   const authHeader = req.headers.authorization;
-
   if (!authHeader) {
+    await auditLog("AUTH_FAILURE", { userId: null, ipAddress: req.ip });
     return res.status(401).json({ error: "No token provided" });
   }
 
@@ -23,6 +24,7 @@ export const authenticate = (req, res, next) => {
     next();
   } catch (err) {
     console.error("AuthMiddleware error:", err && err.message);
+    await auditLog("AUTH_FAILURE", { userId: null, ipAddress: req.ip });
     return res.status(401).json({ error: "Invalid token" });
   }
 };

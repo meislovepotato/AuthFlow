@@ -4,6 +4,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import db from "../../database/index.js";
+import auditLog from "../audit/log.js";
 
 const { User, Role, Session } = db;
 
@@ -60,7 +61,12 @@ export const loginUser = async (
     ipAddress,
   });
 
-  return { accessToken, refreshToken };
+  // Audit log: login success
+  try {
+    await auditLog("LOGIN_SUCCESS", { userId: user.id, ipAddress });
+  } catch (err) {}
+
+  return { accessToken, refreshToken, userId: user.id };
 };
 
 export const generateToken = (payload, expiresIn = "1h") => {
@@ -107,24 +113,37 @@ export const refreshAccessToken = async (
   session.ipAddress = ipAddress || session.ipAddress;
   await session.save();
 
+  // Audit log: token refresh
+  try {
+    await auditLog("TOKEN_REFRESH", { userId: user.id, ipAddress });
+  } catch (err) {}
+
   return { accessToken, refreshToken: newRefreshToken };
 };
-
 export const revokeSession = async ({
   refreshToken = null,
   accessToken = null,
+  ipAddress = null,
 } = {}) => {
   if (refreshToken) {
     const session = await Session.findOne({ where: { refreshToken } });
     if (!session) return false;
+    const userId = session.userId;
     await session.destroy();
+    try {
+      await auditLog("LOGOUT", { userId, ipAddress });
+    } catch (err) {}
     return true;
   }
 
   if (accessToken) {
     const session = await Session.findOne({ where: { token: accessToken } });
     if (!session) return false;
+    const userId = session.userId;
     await session.destroy();
+    try {
+      await auditLog("LOGOUT", { userId, ipAddress });
+    } catch (err) {}
     return true;
   }
 
