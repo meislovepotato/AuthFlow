@@ -20,11 +20,17 @@ export const register = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
-    const result = await authService.loginUser(req.body);
+    const ipAddress = req.ip || req.connection?.remoteAddress;
+    const userAgent = req.headers["user-agent"] || null;
 
-    const { token } = result;
+    const result = await authService.loginUser(req.body, {
+      ipAddress,
+      userAgent,
+    });
 
-    // If redirect params provided, validate client and redirect back with token
+    const { accessToken, refreshToken } = result;
+
+    // If redirect params provided, validate client and redirect back with access token
     const redirect_uri = req.body.redirect_uri || req.query.redirect_uri;
     const client_id = req.body.client_id || req.query.client_id;
 
@@ -37,14 +43,38 @@ export const login = async (req, res) => {
       if (application.redirectUri !== redirect_uri)
         return res.status(400).json({ error: "Invalid redirect_uri" });
 
-      return res.redirect(`${redirect_uri}?token=${token}`);
+      return res.redirect(`${redirect_uri}?token=${accessToken}`);
     }
 
-    res.json({ message: "Login successful", token });
+    res.json({ message: "Login successful", accessToken, refreshToken });
   } catch (err) {
     console.log("LOGIN BODY:", req.body);
     console.log("LOGIN ERROR:", err && err.message);
     res.status(401).json({ error: err.message });
+  }
+};
+
+export const refresh = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken)
+      return res.status(400).json({ error: "Missing refreshToken" });
+
+    const ipAddress = req.ip || req.connection?.remoteAddress;
+    const userAgent = req.headers["user-agent"] || null;
+
+    const result = await authService.refreshAccessToken(refreshToken, {
+      ipAddress,
+      userAgent,
+    });
+
+    if (!result)
+      return res.status(401).json({ error: "Invalid refresh token" });
+
+    return res.json(result);
+  } catch (err) {
+    console.error("REFRESH ERROR:", err && err.message);
+    return res.status(500).json({ error: "Server error" });
   }
 };
 
