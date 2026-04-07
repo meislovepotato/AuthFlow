@@ -124,3 +124,25 @@ export const authorize = async (req, res) => {
     return res.status(500).json({ error: "Server error" });
   }
 };
+
+export const logout = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    const authHeader = req.headers.authorization;
+    const accessToken =
+      authHeader && authHeader.startsWith("Bearer ")
+        ? authHeader.split(" ")[1]
+        : null;
+
+    if (!refreshToken && !accessToken)
+      return res.status(400).json({ error: "Missing token" });
+
+    const ok = await authService.revokeSession({ refreshToken, accessToken });
+    if (!ok) return res.status(404).json({ error: "Session not found" });
+
+    return res.json({ message: "Logged out" });
+  } catch (err) {
+    console.error("LOGOUT ERROR:", err && err.message);
+    return res.status(500).json({ error: "Server error" });
+  }
+};

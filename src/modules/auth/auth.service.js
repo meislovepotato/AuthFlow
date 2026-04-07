@@ -109,3 +109,24 @@ export const refreshAccessToken = async (
 
   return { accessToken, refreshToken: newRefreshToken };
 };
+
+export const revokeSession = async ({
+  refreshToken = null,
+  accessToken = null,
+} = {}) => {
+  if (refreshToken) {
+    const session = await Session.findOne({ where: { refreshToken } });
+    if (!session) return false;
+    await session.destroy();
+    return true;
+  }
+
+  if (accessToken) {
+    const session = await Session.findOne({ where: { token: accessToken } });
+    if (!session) return false;
+    await session.destroy();
+    return true;
+  }
+
+  return false;
+};
