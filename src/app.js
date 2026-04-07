@@ -1,7 +1,7 @@
 // src/app.js
 
 import express from "express";
-import routes from "./routes/index";
+import router from "./routes/index.js";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 
@@ -18,6 +18,6 @@ const limiter = rateLimit({
 app.use(limiter);
 
 app.use(express.json());
-app.use("/api", routes);
+app.use("/api", router);
 
 export default app;
