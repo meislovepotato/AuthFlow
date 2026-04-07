@@ -1,5 +1,5 @@
 import express from "express";
-import { register, login } from "./auth.controller.js";
+import { register, login, authorize } from "./auth.controller.js";
 import { authenticate } from "./auth.middleware.js";
 import roleMiddleware from "../../middleware/RoleMiddleware.js";
 
@@ -7,6 +7,7 @@ const router = express.Router();
 
 router.post("/register", register);
 router.post("/login", login);
+router.get("/authorize", authorize);
 
 // Example protected route: returns current decoded token payload
 router.get("/me", authenticate, (req, res) => {
