@@ -146,3 +146,21 @@ export const logout = async (req, res) => {
     return res.status(500).json({ error: "Server error" });
   }
 };
+
+export const clientToken = async (req, res) => {
+  try {
+    const app = req.client;
+    if (!app) return res.status(401).json({ error: "Invalid client" });
+
+    // Issue an access token for the client (machine-to-machine)
+    const token = authService.generateToken(
+      { clientId: app.clientId, appId: app.id },
+      "1h",
+    );
+
+    return res.json({ accessToken: token });
+  } catch (err) {
+    console.error("CLIENT TOKEN ERROR:", err && err.message);
+    return res.status(500).json({ error: "Server error" });
+  }
+};
