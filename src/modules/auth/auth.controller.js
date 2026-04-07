@@ -26,7 +26,7 @@ export const login = async (req, res) => {
     });
   } catch (err) {
     console.log("LOGIN BODY:", req.body);
-    console.log("USER FROM DB:", user);
+    console.log("LOGIN ERROR:", err && err.message);
     res.status(401).json({ error: err.message });
   }
 };

@@ -1,11 +1,21 @@
-// src/modules/auth/auth.routes.js
-
 import express from "express";
 import { register, login } from "./auth.controller.js";
+import { authenticate } from "./auth.middleware.js";
+import roleMiddleware from "../../middleware/RoleMiddleware.js";
 
 const router = express.Router();
 
 router.post("/register", register);
 router.post("/login", login);
+
+// Example protected route: returns current decoded token payload
+router.get("/me", authenticate, (req, res) => {
+  res.json({ user: req.user });
+});
+
+// Example admin-only route (roleId 1 = ADMIN per seeders)
+router.get("/admin", authenticate, roleMiddleware(1), (req, res) => {
+  res.json({ message: "admin access granted" });
+});
 
 export default router;
