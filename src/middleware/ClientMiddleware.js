@@ -1,7 +1,8 @@
 import db from "../database/index.js";
+import bcrypt from "bcrypt";
 
 // validateClient middleware: checks x-client-id and x-client-secret headers
-export default function validateClient(req, res, next) {
+export default async function validateClient(req, res, next) {
   const clientId = req.headers["x-client-id"];
   const clientSecret = req.headers["x-client-secret"];
 
@@ -9,19 +10,26 @@ export default function validateClient(req, res, next) {
     return res.status(401).json({ error: "Missing client credentials" });
   }
 
-  db.Application.findOne({ where: { clientId } })
-    .then((app) => {
-      if (!app) return res.status(401).json({ error: "Invalid client" });
+  try {
+    const app = await db.Application.findOne({ where: { clientId } });
+    if (!app) return res.status(401).json({ error: "Invalid client" });
 
-      // Compare secrets (stored in DB as plain for now) — consider hashing
-      if (app.clientSecret !== clientSecret)
-        return res.status(401).json({ error: "Invalid client secret" });
+    const stored = app.clientSecret || "";
+    let ok = false;
 
-      req.client = app; // attach application record
-      return next();
-    })
-    .catch((err) => {
-      console.error("ClientMiddleware error:", err && err.message);
-      return res.status(500).json({ error: "Server error" });
-    });
+    // If stored secret looks like bcrypt hash, use compare
+    if (stored.startsWith("$2")) {
+      ok = await bcrypt.compare(clientSecret, stored);
+    } else {
+      ok = stored === clientSecret;
+    }
+
+    if (!ok) return res.status(401).json({ error: "Invalid client secret" });
+
+    req.client = app; // attach application record
+    return next();
+  } catch (err) {
+    console.error("ClientMiddleware error:", err && err.message);
+    return res.status(500).json({ error: "Server error" });
+  }
 }

@@ -3,9 +3,16 @@
 import * as authService from "./auth.service.js";
 import db from "../../database/index.js";
 import jwt from "jsonwebtoken";
+import { z } from "zod";
 
 export const register = async (req, res) => {
   try {
+    const schema = z.object({
+      email: z.string().email(),
+      password: z.string().min(6),
+    });
+    schema.parse(req.body);
+
     const user = await authService.registerUser(req.body);
 
     res.status(201).json({
@@ -20,6 +27,12 @@ export const register = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
+    const schema = z.object({
+      email: z.string().email(),
+      password: z.string().min(6),
+    });
+    schema.parse(req.body);
+
     const ipAddress = req.ip || req.connection?.remoteAddress;
     const userAgent = req.headers["user-agent"] || null;
 
@@ -56,9 +69,8 @@ export const login = async (req, res) => {
 
 export const refresh = async (req, res) => {
   try {
-    const { refreshToken } = req.body;
-    if (!refreshToken)
-      return res.status(400).json({ error: "Missing refreshToken" });
+    const schema = z.object({ refreshToken: z.string() });
+    const { refreshToken } = schema.parse(req.body);
 
     const ipAddress = req.ip || req.connection?.remoteAddress;
     const userAgent = req.headers["user-agent"] || null;
@@ -80,12 +92,11 @@ export const refresh = async (req, res) => {
 
 export const authorize = async (req, res) => {
   try {
-    const { client_id, redirect_uri } = req.query;
-
-    if (!client_id || !redirect_uri)
-      return res
-        .status(400)
-        .json({ error: "Missing client_id or redirect_uri" });
+    const schema = z.object({
+      client_id: z.string(),
+      redirect_uri: z.string().url(),
+    });
+    const { client_id, redirect_uri } = schema.parse(req.query);
 
     const application = await db.Application.findOne({
       where: { clientId: client_id },
@@ -127,7 +138,8 @@ export const authorize = async (req, res) => {
 
 export const logout = async (req, res) => {
   try {
-    const { refreshToken } = req.body;
+    const schema = z.object({ refreshToken: z.string().optional() });
+    const { refreshToken } = schema.parse(req.body || {});
     const authHeader = req.headers.authorization;
     const accessToken =
       authHeader && authHeader.startsWith("Bearer ")

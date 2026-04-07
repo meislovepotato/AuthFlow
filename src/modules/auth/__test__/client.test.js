@@ -1,6 +1,7 @@
 import request from "supertest";
 import app from "../../../app.js";
 import db from "../../../database/index.js";
+import bcrypt from "bcrypt";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 
 describe("Client credentials", () => {
@@ -10,10 +11,11 @@ describe("Client credentials", () => {
 
   beforeAll(async () => {
     await db.sequelize.authenticate();
+    const hashed = await bcrypt.hash(clientSecret, 10);
     const appRec = await db.Application.create({
       name: "test-app",
       clientId,
-      clientSecret,
+      clientSecret: hashed,
       redirectUri: "http://localhost/cb",
     });
     applicationId = appRec.id;
