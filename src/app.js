@@ -4,8 +4,14 @@ import express from "express";
 import router from "./routes/index.js";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import cors from "cors";
 
 const app = express();
+
+app.use(cors({
+  origin: "http://localhost:5173", // frontend
+  credentials: true
+}));
 
 // Security headers
 app.use(helmet());
