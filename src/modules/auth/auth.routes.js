@@ -3,6 +3,7 @@ import {
   register,
   login,
   authorize,
+  token,
   refresh,
   logout,
   clientToken,
@@ -16,6 +17,7 @@ const router = express.Router();
 router.post("/register", register);
 router.post("/login", login);
 router.get("/authorize", authorize);
+router.post("/token", token);
 router.post("/refresh", refresh);
 router.post("/logout", logout);
 router.post("/client-token", validateClient, clientToken);

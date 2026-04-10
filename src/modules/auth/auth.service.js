@@ -6,7 +6,7 @@ import crypto from "crypto";
 import db from "../../database/index.js";
 import auditLog from "../audit/log.js";
 
-const { User, Role, Session } = db;
+const { User, Role, Session, AuthorizationCode } = db;
 
 export const registerUser = async ({ email, password }) => {
   const existing = await User.findOne({ where: { email } });
@@ -38,6 +38,21 @@ export const loginUser = async (
   if (!isValid) throw new Error("Invalid credentials");
 
   // access token short-lived (15 minutes)
+  const sessionResult = await createSession({ user, ipAddress, userAgent });
+
+  // Audit log: login success
+  try {
+    await auditLog("LOGIN_SUCCESS", { userId: user.id, ipAddress });
+  } catch (err) {}
+
+  return { ...sessionResult, userId: user.id };
+};
+
+export const createSession = async ({
+  user,
+  ipAddress = null,
+  userAgent = null,
+} = {}) => {
   const accessToken = jwt.sign(
     { userId: user.id, roleId: user.roleId },
     process.env.JWT_SECRET,
@@ -46,10 +61,7 @@ export const loginUser = async (
     },
   );
 
-  // refresh token long-lived — opaque random string
   const refreshToken = crypto.randomBytes(64).toString("hex");
-
-  // store refresh token in Sessions table
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
   await Session.create({
@@ -61,12 +73,50 @@ export const loginUser = async (
     ipAddress,
   });
 
-  // Audit log: login success
-  try {
-    await auditLog("LOGIN_SUCCESS", { userId: user.id, ipAddress });
-  } catch (err) {}
+  return { accessToken, refreshToken };
+};
 
-  return { accessToken, refreshToken, userId: user.id };
+export const createAuthorizationCode = async ({
+  userId,
+  clientId,
+  redirectUri,
+  expiresInMs = 10 * 60 * 1000,
+} = {}) => {
+  const code = crypto.randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + expiresInMs);
+
+  return AuthorizationCode.create({
+    code,
+    clientId,
+    redirectUri,
+    userId,
+    expiresAt,
+    used: false,
+  });
+};
+
+export const consumeAuthorizationCode = async ({
+  code,
+  clientId,
+  redirectUri,
+} = {}) => {
+  const authCode = await AuthorizationCode.findOne({
+    where: {
+      code,
+      clientId,
+      redirectUri,
+      used: false,
+    },
+  });
+  if (!authCode) return null;
+  if (authCode.expiresAt && new Date(authCode.expiresAt) < new Date()) {
+    await authCode.destroy();
+    return null;
+  }
+
+  authCode.used = true;
+  await authCode.save();
+  return authCode;
 };
 
 export const generateToken = (payload, expiresIn = "1h") => {
