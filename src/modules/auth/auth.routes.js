@@ -7,6 +7,7 @@ import {
   refresh,
   logout,
   clientToken,
+  session,
 } from "./auth.controller.js";
 import validateClient from "../../middleware/ClientMiddleware.js";
 import { authenticate } from "./auth.middleware.js";
@@ -18,6 +19,7 @@ router.post("/register", register);
 router.post("/login", login);
 router.get("/authorize", authorize);
 router.post("/token", token);
+router.get("/session", session);
 router.post("/refresh", refresh);
 router.post("/logout", logout);
 router.post("/client-token", validateClient, clientToken);

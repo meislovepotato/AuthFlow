@@ -8,10 +8,30 @@ import cors from "cors";
 
 const app = express();
 
-app.use(cors({
-  origin: "http://localhost:5173", // frontend
-  credentials: true
-}));
+const FRONTEND_ORIGINS = (
+  process.env.FRONTEND_ORIGINS || "http://localhost:5173"
+)
+  .split(",")
+  .map((s) => s.trim());
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+      if (FRONTEND_ORIGINS.indexOf(origin) !== -1) return cb(null, true);
+      return cb(new Error("Not allowed by CORS"));
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "Accept",
+    ],
+    credentials: true,
+    optionsSuccessStatus: 200,
+    preflightContinue: false,
+  }),
+);
 
 // Security headers
 app.use(helmet());

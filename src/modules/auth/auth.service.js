@@ -80,6 +80,8 @@ export const createAuthorizationCode = async ({
   userId,
   clientId,
   redirectUri,
+  codeChallenge = null,
+  codeChallengeMethod = null,
   expiresInMs = 10 * 60 * 1000,
 } = {}) => {
   const code = crypto.randomBytes(32).toString("hex");
@@ -90,6 +92,8 @@ export const createAuthorizationCode = async ({
     clientId,
     redirectUri,
     userId,
+    codeChallenge,
+    codeChallengeMethod,
     expiresAt,
     used: false,
   });
@@ -99,6 +103,7 @@ export const consumeAuthorizationCode = async ({
   code,
   clientId,
   redirectUri,
+  codeVerifier = null,
 } = {}) => {
   const authCode = await AuthorizationCode.findOne({
     where: {
@@ -112,6 +117,26 @@ export const consumeAuthorizationCode = async ({
   if (authCode.expiresAt && new Date(authCode.expiresAt) < new Date()) {
     await authCode.destroy();
     return null;
+  }
+
+  // If PKCE was used when issuing the code, require and validate the verifier
+  if (authCode.codeChallenge) {
+    if (!codeVerifier) return null;
+
+    const method = (authCode.codeChallengeMethod || "S256").toUpperCase();
+    if (method === "S256") {
+      const hash = crypto.createHash("sha256").update(codeVerifier).digest();
+      const expected = hash
+        .toString("base64")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "");
+      if (expected !== authCode.codeChallenge) return null;
+    } else if (method === "PLAIN") {
+      if (codeVerifier !== authCode.codeChallenge) return null;
+    } else {
+      return null; // unsupported method
+    }
   }
 
   authCode.used = true;

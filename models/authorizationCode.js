@@ -23,6 +23,15 @@ export default (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: false,
       },
+      // PKCE support
+      codeChallenge: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      codeChallengeMethod: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
       userId: {
         type: DataTypes.UUID,
         allowNull: false,
