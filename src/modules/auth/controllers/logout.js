@@ -1,0 +1,41 @@
+import { z } from "zod";
+import * as authService from "../auth.service.js";
+import { getRefreshTokenFromRequest } from "./helpers.js";
+
+export const logout = async (req, res) => {
+  try {
+    const schema = z.object({ refreshToken: z.string().optional() });
+    const { refreshToken } = schema.parse(req.body || {});
+    const authHeader = req.headers.authorization;
+    const accessToken =
+      authHeader && authHeader.startsWith("Bearer ")
+        ? authHeader.split(" ")[1]
+        : null;
+
+    const cookieRefreshToken = getRefreshTokenFromRequest(req);
+
+    if (!refreshToken && !accessToken && !cookieRefreshToken)
+      return res.status(400).json({ error: "Missing token" });
+
+    const ipAddress = req.ip || req.connection?.remoteAddress;
+    const userAgent = req.headers["user-agent"] || null;
+
+    const ok = await authService.revokeSession({
+      refreshToken: refreshToken || cookieRefreshToken,
+      accessToken,
+      ipAddress,
+      userAgent,
+    });
+    if (!ok) return res.status(404).json({ error: "Session not found" });
+
+    res.clearCookie(process.env.AUTH_SESSION_COOKIE_NAME || "auth_session", {
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+    });
+
+    return res.json({ message: "Logged out" });
+  } catch (err) {
+    console.error("LOGOUT ERROR:", err && err.message);
+    return res.status(500).json({ error: "Server error" });
+  }
+};
