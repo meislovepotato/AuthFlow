@@ -7,8 +7,9 @@ const start = async () => {
   await db.sequelize.authenticate();
   console.log("✅ DB Connected");
 
-  app.listen(3000, () => {
-    console.log("🚀 Server running");
+  const port = process.env.PORT || 3000;
+  app.listen(port, () => {
+    console.log(`🚀 Server running on port ${port}`);
   });
 };
 
