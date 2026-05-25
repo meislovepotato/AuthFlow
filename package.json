@@ -6,7 +6,8 @@
   "scripts": {
     "test": "vitest",
     "dev": "nodemon src/server.js",
-    "migrate": "sequelize-cli db:migrate"
+    "migrate": "sequelize-cli db:migrate",
+    "start": "node src/server.js"
   },
   "keywords": [],
   "author": "",
