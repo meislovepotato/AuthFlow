@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import db from "../../database/index.js";
 import auditLog from "../audit/log.js";
+import { hasColumn } from "../../utils/dbSchema.js";
 
 const { User, Role, Session, AuthorizationCode } = db;
 
@@ -19,11 +20,20 @@ export const registerUser = async ({ email, password }) => {
   const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS || "12", 10);
   const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-  const user = await User.create({
+  // Build create payload only including columns that exist in the DB table
+  const payload = {
     email: normalizedEmail,
     password: hashedPassword,
     roleId: role.id,
-  });
+  };
+  try {
+    const includeFailed = await hasColumn("Users", "failedLoginAttempts");
+    const includeLocked = await hasColumn("Users", "lockedUntil");
+    if (!includeFailed) delete payload.failedLoginAttempts;
+    if (!includeLocked) delete payload.lockedUntil;
+  } catch (e) {}
+
+  const user = await User.create(payload);
 
   return user;
 };
@@ -45,20 +55,29 @@ export const loginUser = async (
   const isValid = await bcrypt.compare(password, user.password);
   if (!isValid) {
     try {
-      user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
-      // Lock account after 5 failed attempts for 15 minutes
-      if (user.failedLoginAttempts >= 5) {
-        user.lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
+      if (await hasColumn("Users", "failedLoginAttempts")) {
+        user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+        // Lock account after 5 failed attempts for 15 minutes
+        if (
+          user.failedLoginAttempts >= 5 &&
+          (await hasColumn("Users", "lockedUntil"))
+        ) {
+          user.lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
+        }
+        await user.save();
       }
-      await user.save();
     } catch (e) {}
     throw new Error("Invalid credentials");
   }
 
   // Reset failed attempts on successful login
-  if (user.failedLoginAttempts && user.failedLoginAttempts > 0) {
+  if (
+    (await hasColumn("Users", "failedLoginAttempts")) &&
+    user.failedLoginAttempts &&
+    user.failedLoginAttempts > 0
+  ) {
     user.failedLoginAttempts = 0;
-    user.lockedUntil = null;
+    if (await hasColumn("Users", "lockedUntil")) user.lockedUntil = null;
     try {
       await user.save();
     } catch (e) {}
