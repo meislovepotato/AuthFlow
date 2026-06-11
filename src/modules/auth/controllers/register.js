@@ -7,11 +7,23 @@ export const register = async (req, res) => {
   try {
     const schema = z.object({
       email: z.string().email(),
-      password: z.string().min(6),
+      // Stronger password policy: min 12 chars, mixed types
+      password: z
+        .string()
+        .min(12)
+        .regex(/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*\W)/, {
+          message:
+            "Password must include upper, lower, number and special char",
+        }),
     });
-    schema.parse(req.body);
 
-    const user = await authService.registerUser(req.body);
+    const parsed = schema.parse(req.body);
+    const normalizedEmail = parsed.email.trim().toLowerCase();
+
+    const user = await authService.registerUser({
+      email: normalizedEmail,
+      password: parsed.password,
+    });
 
     try {
       await auditLog("REGISTER_SUCCESS", {

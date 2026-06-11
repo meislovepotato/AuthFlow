@@ -15,16 +15,32 @@ export const login = async (req, res) => {
       code_challenge_method: z.string().optional(),
     });
     schema.parse(req.body);
-
-    const ipAddress = req.ip || req.connection?.remoteAddress;
-    const userAgent = req.headers["user-agent"] || null;
+      const schema = z.object({
+        email: z.string().email(),
+        // match registration policy
+        password: z
+          .string()
+          .min(12)
+          .regex(/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*\W)/, {
+            message:
+              "Password must include upper, lower, number and special char",
+          }),
 
     const result = await authService.loginUser(req.body, {
       ipAddress,
       userAgent,
     });
 
-    setSessionCookie(res, result.refreshToken);
+      const parsed = schema.parse(req.body);
+      const normalizedEmail = parsed.email.trim().toLowerCase();
+
+      const result = await authService.loginUser(
+        { email: normalizedEmail, password: parsed.password },
+        {
+          ipAddress,
+          userAgent,
+        },
+      );
 
     const { accessToken, refreshToken, userId } = result;
     const redirect_uri = req.body.redirect_uri || req.query.redirect_uri;
