@@ -7,40 +7,35 @@ export const login = async (req, res) => {
   try {
     const schema = z.object({
       email: z.string().email(),
-      password: z.string().min(6),
+      // match registration policy
+      password: z
+        .string()
+        .min(12)
+        .regex(/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*\W)/, {
+          message:
+            "Password must include upper, lower, number and special char",
+        }),
       client_id: z.string().optional(),
       redirect_uri: z.string().url().optional(),
       state: z.string().optional(),
       code_challenge: z.string().optional(),
       code_challenge_method: z.string().optional(),
     });
-    schema.parse(req.body);
-      const schema = z.object({
-        email: z.string().email(),
-        // match registration policy
-        password: z
-          .string()
-          .min(12)
-          .regex(/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*\W)/, {
-            message:
-              "Password must include upper, lower, number and special char",
-          }),
 
-    const result = await authService.loginUser(req.body, {
-      ipAddress,
-      userAgent,
-    });
+    const parsed = schema.parse(req.body);
 
-      const parsed = schema.parse(req.body);
-      const normalizedEmail = parsed.email.trim().toLowerCase();
+    const ipAddress = req.ip || req.connection?.remoteAddress;
+    const userAgent = req.headers["user-agent"] || null;
 
-      const result = await authService.loginUser(
-        { email: normalizedEmail, password: parsed.password },
-        {
-          ipAddress,
-          userAgent,
-        },
-      );
+    const normalizedEmail = parsed.email.trim().toLowerCase();
+
+    const result = await authService.loginUser(
+      { email: normalizedEmail, password: parsed.password },
+      {
+        ipAddress,
+        userAgent,
+      },
+    );
 
     const { accessToken, refreshToken, userId } = result;
     const redirect_uri = req.body.redirect_uri || req.query.redirect_uri;
