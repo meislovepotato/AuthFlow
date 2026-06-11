@@ -36,6 +36,9 @@ app.use(
 // Security headers
 app.use(helmet());
 
+// trust Render / one proxy
+app.set('trust proxy', 1);
+
 // Basic rate limiting for all requests (adjust in production)
 const limiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
