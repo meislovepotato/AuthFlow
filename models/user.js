@@ -9,12 +9,17 @@ export default (sequelize, DataTypes) => {
     {
       email: DataTypes.STRING,
       password: DataTypes.STRING,
+      failedLoginAttempts: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
+      },
+      lockedUntil: DataTypes.DATE,
       roleId: DataTypes.UUID,
     },
     {
       sequelize,
       modelName: "User",
-    }
+    },
   );
 
   return User;
