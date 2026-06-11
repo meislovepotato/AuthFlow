@@ -1,7 +1,12 @@
 import { z } from "zod";
 import * as authService from "../auth.service.js";
 import db from "../../../database/index.js";
-import { auditLog, FRONTEND_LOGIN_URL, setSessionCookie } from "./helpers.js";
+import {
+  auditLog,
+  FRONTEND_LOGIN_URL,
+  setSessionCookie,
+  sendError,
+} from "./helpers.js";
 
 export const login = async (req, res) => {
   try {
@@ -83,6 +88,31 @@ export const login = async (req, res) => {
     } catch (e) {
       console.error("AuditLog error (login failure):", e && e.message);
     }
-    res.status(401).json({ error: err.message });
+    // Structured errors for frontend
+    if (err instanceof z.ZodError) {
+      const details = err.errors.map((e) => ({
+        field: e.path.join("."),
+        message: e.message,
+      }));
+      return sendError(res, "VALIDATION_ERROR", "Invalid input", 400, details);
+    }
+
+    if (err.message && err.message.toLowerCase().includes("locked")) {
+      return sendError(
+        res,
+        "ACCOUNT_LOCKED",
+        "Account locked. Try again later or reset your password.",
+        403,
+      );
+    }
+
+    if (
+      err.message &&
+      err.message.toLowerCase().includes("invalid credentials")
+    ) {
+      return sendError(res, "INVALID_CREDENTIALS", "Invalid credentials", 401);
+    }
+
+    return sendError(res, "SERVER_ERROR", "Something went wrong", 500);
   }
 };

@@ -58,4 +58,16 @@ export const getAuthenticatedUser = async (req) => {
   return null;
 };
 
+export const sendError = (
+  res,
+  errorCode,
+  message,
+  status = 400,
+  details = null,
+) => {
+  const payload = { errorCode, message };
+  if (details) payload.details = details;
+  return res.status(status).json(payload);
+};
+
 export { auditLog };

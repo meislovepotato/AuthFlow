@@ -1,7 +1,7 @@
 import { z } from "zod";
 import * as authService from "../auth.service.js";
 import db from "../../../database/index.js";
-import { auditLog } from "./helpers.js";
+import { auditLog, sendError } from "./helpers.js";
 
 export const register = async (req, res) => {
   try {
@@ -47,6 +47,23 @@ export const register = async (req, res) => {
         ipAddress: req.ip,
       });
     } catch (e) {}
-    res.status(400).json({ message: err.message });
+    // Structured errors for frontend
+    if (err instanceof z.ZodError) {
+      const details = err.errors.map((e) => ({
+        field: e.path.join("."),
+        message: e.message,
+      }));
+      return sendError(res, "VALIDATION_ERROR", "Invalid input", 400, details);
+    }
+
+    // Unique/email taken
+    if (
+      err.name === "SequelizeUniqueConstraintError" ||
+      (err.message && err.message.includes("Email already exists"))
+    ) {
+      return sendError(res, "EMAIL_TAKEN", "Email already in use", 409);
+    }
+
+    return sendError(res, "SERVER_ERROR", "Something went wrong", 500);
   }
 };
