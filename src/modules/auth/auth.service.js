@@ -9,16 +9,18 @@ import auditLog from "../audit/log.js";
 const { User, Role, Session, AuthorizationCode } = db;
 
 export const registerUser = async ({ email, password }) => {
-  const existing = await User.findOne({ where: { email } });
+  const normalizedEmail = (email || "").trim().toLowerCase();
+  const existing = await User.findOne({ where: { email: normalizedEmail } });
   if (existing) throw new Error("Email already exists");
 
   const role = await Role.findOne({ where: { name: "USER" } });
   if (!role) throw new Error("Role not found");
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+  const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS || "12", 10);
+  const hashedPassword = await bcrypt.hash(password, saltRounds);
 
   const user = await User.create({
-    email,
+    email: normalizedEmail,
     password: hashedPassword,
     roleId: role.id,
   });
@@ -30,12 +32,37 @@ export const loginUser = async (
   { email, password },
   { ipAddress = null, userAgent = null } = {},
 ) => {
-  const user = await User.findOne({ where: { email } });
+  const normalizedEmail = (email || "").trim().toLowerCase();
+  const user = await User.findOne({ where: { email: normalizedEmail } });
 
   if (!user) throw new Error("Invalid credentials");
 
+  // Check for account lockout
+  if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
+    throw new Error("Account locked due to repeated failed login attempts");
+  }
+
   const isValid = await bcrypt.compare(password, user.password);
-  if (!isValid) throw new Error("Invalid credentials");
+  if (!isValid) {
+    try {
+      user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+      // Lock account after 5 failed attempts for 15 minutes
+      if (user.failedLoginAttempts >= 5) {
+        user.lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
+      }
+      await user.save();
+    } catch (e) {}
+    throw new Error("Invalid credentials");
+  }
+
+  // Reset failed attempts on successful login
+  if (user.failedLoginAttempts && user.failedLoginAttempts > 0) {
+    user.failedLoginAttempts = 0;
+    user.lockedUntil = null;
+    try {
+      await user.save();
+    } catch (e) {}
+  }
 
   // access token short-lived (15 minutes)
   const sessionResult = await createSession({ user, ipAddress, userAgent });
