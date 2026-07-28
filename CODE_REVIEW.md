@@ -326,7 +326,3 @@ Recommended next reading
 
 ---
 
-If you want, I can now:
-
-- generate a per-function call graph or sequence diagrams for `authorize -> token -> session` flows, or
-- produce a single-page HTML interactive map for exploring functions.
