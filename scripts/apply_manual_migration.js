@@ -3,25 +3,18 @@ import "dotenv/config";
 import { QueryTypes, Sequelize } from "sequelize";
 
 async function run() {
-  const sequelize = process.env.DATABASE_URL
-    ? new Sequelize(process.env.DATABASE_URL, {
-        dialect: "postgres",
-        protocol: "postgres",
-        logging: false,
-        dialectOptions: {
-          ssl: { rejectUnauthorized: false },
-        },
-      })
-    : new Sequelize(
-        process.env.DB_NAME,
-        process.env.DB_USER,
-        process.env.DB_PASS,
-        {
-          host: process.env.DB_HOST,
-          dialect: "postgres",
-          logging: false,
-        },
-      );
+  if (!process.env.DATABASE_URL) {
+    throw new Error("DATABASE_URL is required");
+  }
+
+  const sequelize = new Sequelize(process.env.DATABASE_URL, {
+    dialect: "postgres",
+    protocol: "postgres",
+    logging: false,
+    dialectOptions: {
+      ssl: { rejectUnauthorized: false },
+    },
+  });
 
   try {
     console.log("Connecting to PostgreSQL...");

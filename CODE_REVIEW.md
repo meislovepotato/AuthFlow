@@ -299,7 +299,7 @@ This section lists all known bugs, issues encountered during development, and th
 
 Environment variables (summary)
 
-- `DB_NAME`, `DB_USER`, `DB_PASS`, `DB_HOST`, `DB_PORT` — DB connection
+- `DATABASE_URL` — PostgreSQL connection string
 - `JWT_SECRET` — used for signing JWT access tokens
 - `FRONTEND_ORIGINS` — comma-separated allowed origins for CORS
 - `FRONTEND_LOGIN_URL` — where to redirect unauthenticated authorize requests

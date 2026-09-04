@@ -56,7 +56,7 @@ This README documents backend setup, architecture, security considerations, test
 Prerequisites:
 
 - Node.js (16+ recommended)
-- A PostgreSQL database (configured via `DATABASE_URL` or `DB_NAME`, `DB_USER`, `DB_PASS`, `DB_HOST`, and `DB_PORT`)
+- A PostgreSQL database configured via `DATABASE_URL`
 
 Install:
 
@@ -66,7 +66,7 @@ npm install
 
 Environment variables (summary) — set these in `.env` or your deployment environment:
 
-- `DB_NAME`, `DB_USER`, `DB_PASS`, `DB_HOST`, `DB_PORT` — database connection
+- `DATABASE_URL` — PostgreSQL connection string
 - `JWT_SECRET` — secret for signing access tokens
 - `FRONTEND_ORIGINS` — comma-separated allowed origins for CORS
 - `FRONTEND_LOGIN_URL` — URL to redirect unauthenticated authorize requests to (SPA login)
