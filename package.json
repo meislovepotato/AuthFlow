@@ -14,6 +14,8 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@supabase/ssr": "^0.12.5",
+    "@supabase/supabase-js": "^2.115.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
@@ -21,8 +23,7 @@
     "express-rate-limit": "^6.7.0",
     "helmet": "^7.0.0",
     "jsonwebtoken": "^9.0.3",
-    "mysql2": "^3.20.0",
-    "pg": "^8.11.0",
+    "pg": "^8.23.0",
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.8",
     "uuid": "^13.0.0",
