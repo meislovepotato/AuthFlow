@@ -325,4 +325,3 @@ Recommended next reading
 - `models/authorizationCode.js` and matching migrations — to see the PKCE DB shape and lifetime.
 
 ---
-
