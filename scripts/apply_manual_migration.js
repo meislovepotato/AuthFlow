@@ -1,30 +1,47 @@
 #!/usr/bin/env node
 import "dotenv/config";
-import mysql from "mysql2/promise";
+import { QueryTypes, Sequelize } from "sequelize";
 
 async function run() {
-  const cfg = {
-    host: process.env.DB_HOST || "127.0.0.1",
-    user: process.env.DB_USER || "root",
-    password: process.env.DB_PASS || "",
-    database: process.env.DB_NAME || "authflow_db",
-  };
+  const sequelize = process.env.DATABASE_URL
+    ? new Sequelize(process.env.DATABASE_URL, {
+        dialect: "postgres",
+        protocol: "postgres",
+        logging: false,
+        dialectOptions: {
+          ssl: { rejectUnauthorized: false },
+        },
+      })
+    : new Sequelize(
+        process.env.DB_NAME,
+        process.env.DB_USER,
+        process.env.DB_PASS,
+        {
+          host: process.env.DB_HOST,
+          dialect: "postgres",
+          logging: false,
+        },
+      );
 
-  console.log("Connecting to DB", cfg.host, cfg.database);
-  const conn = await mysql.createConnection(cfg);
   try {
+    console.log("Connecting to PostgreSQL...");
+    await sequelize.authenticate();
     console.log("Checking for existing columns...");
-    const [cols] = await conn.execute(
-      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'Users' AND COLUMN_NAME IN ('failedLoginAttempts','lockedUntil')`,
-      [cfg.database],
+    const cols = await sequelize.query(
+      `SELECT column_name AS "columnName"
+       FROM information_schema.columns
+       WHERE table_schema = current_schema()
+         AND table_name = 'Users'
+         AND column_name IN ('failedLoginAttempts', 'lockedUntil')`,
+      { type: QueryTypes.SELECT },
     );
 
-    const existing = new Set(cols.map((r) => r.COLUMN_NAME));
+    const existing = new Set(cols.map((row) => row.columnName));
 
     if (!existing.has("failedLoginAttempts")) {
       console.log("Adding failedLoginAttempts column...");
-      await conn.execute(
-        "ALTER TABLE `Users` ADD COLUMN `failedLoginAttempts` INT NOT NULL DEFAULT 0",
+      await sequelize.query(
+        'ALTER TABLE "Users" ADD COLUMN "failedLoginAttempts" INTEGER NOT NULL DEFAULT 0',
       );
     } else {
       console.log("failedLoginAttempts already exists");
@@ -32,25 +49,29 @@ async function run() {
 
     if (!existing.has("lockedUntil")) {
       console.log("Adding lockedUntil column...");
-      await conn.execute(
-        "ALTER TABLE `Users` ADD COLUMN `lockedUntil` DATETIME NULL",
+      await sequelize.query(
+        'ALTER TABLE "Users" ADD COLUMN "lockedUntil" TIMESTAMP WITH TIME ZONE',
       );
     } else {
       console.log("lockedUntil already exists");
     }
 
     console.log("Checking for unique index on email...");
-    const [indexes] = await conn.execute(
-      `SELECT INDEX_NAME FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'Users' AND COLUMN_NAME = 'email'`,
-      [cfg.database],
+    const indexes = await sequelize.query(
+      `SELECT indexname AS "indexName"
+       FROM pg_indexes
+       WHERE schemaname = current_schema()
+         AND tablename = 'Users'
+         AND indexdef LIKE '%("email")%'`,
+      { type: QueryTypes.SELECT },
     );
-    const idxNames = new Set(indexes.map((r) => r.INDEX_NAME));
+    const idxNames = new Set(indexes.map((row) => row.indexName));
     if (!idxNames.has("unique_users_email")) {
       try {
-        await conn.execute(
-          "ALTER TABLE `Users` ADD UNIQUE INDEX `unique_users_email` (`email`)",
+        await sequelize.query(
+          'ALTER TABLE "Users" ADD CONSTRAINT "unique_users_email" UNIQUE ("email")',
         );
-        console.log("Added unique index `unique_users_email`");
+        console.log("Added unique constraint unique_users_email");
       } catch (e) {
         console.log(
           "Index creation error (might already exist or duplicates):",
@@ -63,7 +84,7 @@ async function run() {
 
     console.log("Done.");
   } finally {
-    await conn.end();
+    await sequelize.close();
   }
 }
 

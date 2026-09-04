@@ -56,7 +56,7 @@ This README documents backend setup, architecture, security considerations, test
 Prerequisites:
 
 - Node.js (16+ recommended)
-- A MySQL-compatible database (configured via env vars)
+- A PostgreSQL database (configured via `DATABASE_URL` or `DB_NAME`, `DB_USER`, `DB_PASS`, `DB_HOST`, and `DB_PORT`)
 
 Install:
 
