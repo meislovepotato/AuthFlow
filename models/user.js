@@ -14,7 +14,7 @@ export default (sequelize, DataTypes) => {
         defaultValue: 0,
       },
       lockedUntil: DataTypes.DATE,
-      roleId: DataTypes.UUID,
+      roleId: DataTypes.INTEGER,
     },
     {
       sequelize,
