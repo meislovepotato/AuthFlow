@@ -8,22 +8,30 @@ import cors from "cors";
 
 const app = express();
 
+const normalizeOrigin = (origin) =>
+  origin?.trim().replace(/^['"]|['"]$/g, "").replace(/\/$/, "");
+
 const FRONTEND_ORIGINS = (
   process.env.FRONTEND_ORIGINS || "http://localhost:5173"
 )
   .split(",")
-  .map((s) => s.trim());
+  .map(normalizeOrigin)
+  .filter(Boolean);
 console.log("FRONTEND_ORIGINS =", JSON.stringify(FRONTEND_ORIGINS));
 
 app.use(
   cors({
     origin: (origin, cb) => {
       console.log("REQUEST ORIGIN =", JSON.stringify(origin));
-      console.log("ORIGIN ALLOWED =", FRONTEND_ORIGINS.includes(origin));
+      const normalizedOrigin = normalizeOrigin(origin);
+      console.log(
+        "ORIGIN ALLOWED =",
+        FRONTEND_ORIGINS.includes(normalizedOrigin),
+      );
 
       if (!origin) return cb(null, true);
 
-      if (FRONTEND_ORIGINS.includes(origin)) {
+      if (FRONTEND_ORIGINS.includes(normalizedOrigin)) {
         return cb(null, true);
       }
 
