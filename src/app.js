@@ -13,14 +13,23 @@ const FRONTEND_ORIGINS = (
 )
   .split(",")
   .map((s) => s.trim());
+console.log("FRONTEND_ORIGINS =", JSON.stringify(FRONTEND_ORIGINS));
+
 app.use(
   cors({
     origin: (origin, cb) => {
+      console.log("REQUEST ORIGIN =", JSON.stringify(origin));
+      console.log("ORIGIN ALLOWED =", FRONTEND_ORIGINS.includes(origin));
+
       if (!origin) return cb(null, true);
-      if (FRONTEND_ORIGINS.indexOf(origin) !== -1) return cb(null, true);
-      return cb(new Error("Not allowed by CORS"));
+
+      if (FRONTEND_ORIGINS.includes(origin)) {
+        return cb(null, true);
+      }
+
+      return cb(new Error(`Not allowed by CORS: ${origin}`));
     },
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: [
       "Content-Type",
       "Authorization",
@@ -28,7 +37,7 @@ app.use(
       "Accept",
     ],
     credentials: true,
-    optionsSuccessStatus: 200,
+    optionsSuccessStatus: 204,
     preflightContinue: false,
   }),
 );
@@ -37,7 +46,7 @@ app.use(
 app.use(helmet());
 
 // trust Render / one proxy
-app.set('trust proxy', 1);
+app.set("trust proxy", 1);
 
 // Basic rate limiting for all requests (adjust in production)
 const limiter = rateLimit({
