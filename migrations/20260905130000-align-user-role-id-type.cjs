@@ -1,17 +1,22 @@
 "use strict";
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
-  async up(queryInterface, Sequelize) {
-    await queryInterface.changeColumn("Users", "roleId", {
-      type: Sequelize.INTEGER,
-      allowNull: true,
-    });
+  async up(queryInterface) {
+    await queryInterface.sequelize.query(`
+      ALTER TABLE "Users"
+      ALTER COLUMN "roleId" TYPE INTEGER
+      USING CASE
+        WHEN "roleId"::text ~ '^[0-9]+$' THEN "roleId"::text::integer
+        ELSE NULL
+      END
+    `);
   },
 
-  async down(queryInterface, Sequelize) {
-    await queryInterface.changeColumn("Users", "roleId", {
-      type: Sequelize.UUID,
-      allowNull: true,
-    });
+  async down(queryInterface) {
+    await queryInterface.sequelize.query(`
+      ALTER TABLE "Users"
+      ALTER COLUMN "roleId" TYPE UUID
+      USING NULL::uuid
+    `);
   },
 };
