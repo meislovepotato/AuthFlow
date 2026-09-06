@@ -12,7 +12,7 @@ export default (sequelize, DataTypes) => {
     {
       token: DataTypes.STRING,
       expiresAt: DataTypes.DATE,
-      userId: DataTypes.UUID,
+      userId: DataTypes.INTEGER,
       refreshToken: DataTypes.STRING,
       userAgent: DataTypes.STRING,
       ipAddress: DataTypes.STRING,
@@ -20,7 +20,7 @@ export default (sequelize, DataTypes) => {
     {
       sequelize,
       modelName: "Session",
-    }
+    },
   );
 
   return Session;

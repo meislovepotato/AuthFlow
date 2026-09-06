@@ -12,12 +12,12 @@ export default (sequelize, DataTypes) => {
     {
       action: DataTypes.STRING,
       ipAddress: DataTypes.STRING,
-      userId: DataTypes.UUID,
+      userId: DataTypes.INTEGER,
     },
     {
       sequelize,
       modelName: "AuditLog",
-    }
+    },
   );
 
   return AuditLog;

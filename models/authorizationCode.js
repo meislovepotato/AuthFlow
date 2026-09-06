@@ -33,7 +33,7 @@ export default (sequelize, DataTypes) => {
         allowNull: true,
       },
       userId: {
-        type: DataTypes.UUID,
+        type: DataTypes.INTEGER,
         allowNull: false,
       },
       expiresAt: DataTypes.DATE,
